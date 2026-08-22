@@ -1,0 +1,5 @@
+Flask==3.1.1
+gunicorn==23.0.0
+prometheus-client==0.22.1
+Markdown==3.8.2
+bleach==6.2.0
