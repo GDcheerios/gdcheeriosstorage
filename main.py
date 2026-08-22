@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import hmac
 import mimetypes
 import os
 import re
 import shutil
 import threading
 from datetime import date, datetime, timezone
+from functools import wraps
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -28,6 +30,64 @@ CHANGELOG_ROOT.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__)
 app.config.update(MAX_CONTENT_LENGTH=MAX_UPLOAD_MB * 1024 * 1024, SECRET_KEY=os.getenv("SECRET_KEY", "development-only"))
+
+
+def load_users() -> dict[str, dict]:
+    """Load HTTP Basic users from STORAGE_USERS.
+
+    Example: {"alice":{"password":"secret","permissions":["view"]},
+              "bob":{"password":"secret","permissions":["view","write"]}}
+    """
+    raw_users = os.getenv("STORAGE_USERS", "")
+    if not raw_users:
+        return {}
+    try:
+        users = json.loads(raw_users)
+    except json.JSONDecodeError as error:
+        raise RuntimeError("STORAGE_USERS must be valid JSON") from error
+    if not isinstance(users, dict):
+        raise RuntimeError("STORAGE_USERS must be a JSON object keyed by username")
+    normalized = {}
+    for username, details in users.items():
+        if not isinstance(username, str) or not username or not isinstance(details, dict):
+            raise RuntimeError("Each STORAGE_USERS entry must have a username and settings object")
+        password = details.get("password")
+        permissions = details.get("permissions", [])
+        if not isinstance(password, str) or not password or not isinstance(permissions, list):
+            raise RuntimeError(f"STORAGE_USERS user {username!r} needs a password and permissions array")
+        permission_set = {str(permission).lower() for permission in permissions}
+        if not permission_set <= {"view", "write"}:
+            raise RuntimeError(f"STORAGE_USERS user {username!r} has an unknown permission")
+        if "write" in permission_set:
+            permission_set.add("view")
+        normalized[username] = {"password": password, "permissions": permission_set}
+    return normalized
+
+
+STORAGE_USERS = load_users()
+
+
+def permission_required(permission: str):
+    """Require a configured HTTP Basic user with the requested permission."""
+    def decorate(view):
+        @wraps(view)
+        def protected(*args, **kwargs):
+            credentials = request.authorization
+            user = STORAGE_USERS.get(credentials.username) if credentials and credentials.username else None
+            password_matches = bool(
+                user and credentials.password is not None
+                and hmac.compare_digest(user["password"], credentials.password)
+            )
+            if not password_matches:
+                response = jsonify(error="Authentication required")
+                response.status_code = 401
+                response.headers["WWW-Authenticate"] = 'Basic realm="Storage", charset="UTF-8"'
+                return response
+            if permission not in user["permissions"]:
+                return jsonify(error=f"The {permission} permission is required"), 403
+            return view(*args, **kwargs)
+        return protected
+    return decorate
 
 registry = CollectorRegistry()
 http_requests = Counter("storage_http_requests_total", "HTTP requests handled", ["method", "status"], registry=registry)
@@ -266,6 +326,7 @@ def too_large(_error):
 
 
 @app.get("/")
+@permission_required("view")
 def index():
     return render_template("index.html", max_upload_mb=MAX_UPLOAD_MB)
 
@@ -276,6 +337,7 @@ def health():
 
 
 @app.get("/api/changelogs")
+@permission_required("view")
 def list_changelogs():
     projects = []
     for project_dir in sorted((path for path in CHANGELOG_ROOT.iterdir() if path.is_dir()), key=lambda path: path.name):
@@ -291,6 +353,7 @@ def list_changelogs():
 
 
 @app.get("/api/changelogs/template")
+@permission_required("view")
 def changelog_template():
     data = {
         "project": request.args.get("project", "Project name"),
@@ -305,6 +368,7 @@ def changelog_template():
 
 
 @app.post("/api/changelogs")
+@permission_required("write")
 def create_changelog():
     data = request.get_json(silent=True) or {}
     content, metadata = build_changelog(data)
@@ -317,6 +381,7 @@ def create_changelog():
 
 
 @app.get("/api/changelogs/<project>/<version>")
+@permission_required("view")
 def get_changelog(project: str, version: str):
     path = changelog_file(project, version)
     if not path.is_file():
@@ -338,6 +403,7 @@ def get_changelog(project: str, version: str):
 
 
 @app.get("/api/files")
+@permission_required("view")
 def list_files():
     directory = safe_path(request.args.get("path"))
     if not directory.exists():
@@ -350,6 +416,7 @@ def list_files():
 
 
 @app.post("/api/upload")
+@permission_required("write")
 def upload():
     destination = safe_path(request.form.get("path"))
     if not destination.is_dir():
@@ -374,6 +441,7 @@ def upload():
 
 
 @app.post("/api/folders")
+@permission_required("write")
 def create_folder():
     data = request.get_json(silent=True) or {}
     parent = safe_path(data.get("path"))
@@ -389,6 +457,7 @@ def create_folder():
 
 
 @app.post("/api/files")
+@permission_required("write")
 def create_file():
     data = request.get_json(silent=True) or {}
     parent = safe_path(data.get("path"))
@@ -404,6 +473,7 @@ def create_file():
 
 
 @app.get("/api/file")
+@permission_required("view")
 def get_file():
     path = safe_path(request.args.get("path"))
     if not path.is_file():
@@ -418,6 +488,7 @@ def get_file():
 
 
 @app.put("/api/file")
+@permission_required("write")
 def update_file():
     data = request.get_json(silent=True) or {}
     path = safe_path(data.get("path"))
@@ -434,6 +505,7 @@ def update_file():
 
 
 @app.get("/api/raw")
+@permission_required("view")
 def raw_file():
     path = safe_path(request.args.get("path"))
     if not path.is_file():
@@ -442,6 +514,7 @@ def raw_file():
 
 
 @app.get("/api/download")
+@permission_required("view")
 def download_file():
     path = safe_path(request.args.get("path"))
     if not path.is_file():
@@ -451,6 +524,7 @@ def download_file():
 
 
 @app.patch("/api/entry")
+@permission_required("write")
 def rename_entry():
     data = request.get_json(silent=True) or {}
     source = safe_path(data.get("path"))
@@ -465,6 +539,7 @@ def rename_entry():
 
 
 @app.delete("/api/entry")
+@permission_required("write")
 def delete_entry():
     path = safe_path(request.args.get("path"))
     if path == STORAGE_DIR:
