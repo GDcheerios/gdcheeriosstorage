@@ -1,66 +1,736 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>gdcheerios storage</title>
-  <style>
-    :root{color-scheme:dark;--bg:#0b1020;--panel:#121a2e;--line:#26324e;--text:#e8edf7;--muted:#91a0bd;--accent:#7c9cff;--danger:#ff647c}
-    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#17213c 0,var(--bg) 42%);color:var(--text);font:14px Inter,system-ui,sans-serif;min-height:100vh}
-    button,input,textarea{font:inherit}button{cursor:pointer}.shell{max-width:1180px;margin:auto;padding:32px 22px}.top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:24px}
-    h1{font-size:24px;margin:0}.sub,.muted{color:var(--muted)}.actions{display:flex;gap:9px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#18223a;color:var(--text);padding:9px 13px;border-radius:9px}.btn:hover{border-color:var(--accent)}.primary{background:var(--accent);border-color:var(--accent);color:#071126;font-weight:700}.danger{color:#ff9aaa}
-    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}.stat,.browser{background:color-mix(in srgb,var(--panel) 91%,transparent);border:1px solid var(--line);border-radius:14px}.stat{padding:16px}.stat strong{display:block;font-size:21px;margin-top:4px}
-    .browser{overflow:hidden}.toolbar{padding:13px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}.crumbs{flex:1;white-space:nowrap;overflow:auto}.crumb{color:var(--accent);background:none;border:0;padding:4px}.search{width:210px;background:#0c1427;border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:8px}
-    .drop{display:none;margin:12px;border:2px dashed var(--accent);border-radius:12px;text-align:center;padding:28px;color:var(--accent)}.drop.show{display:block}
-    table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 14px;border-bottom:1px solid #202b45}th{color:var(--muted);font-size:12px;text-transform:uppercase}.name{font-weight:600}.entry{cursor:pointer}.entry:hover{background:#17213a}.entry-actions{display:flex;gap:6px;justify-content:flex-end}.icon-btn{border:0;background:transparent;color:var(--muted);padding:5px}.icon-btn:hover{color:var(--text)}.empty{text-align:center;padding:55px;color:var(--muted)}
-    dialog{width:min(900px,94vw);height:min(720px,90vh);padding:0;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text)}dialog::backdrop{background:#050814cc}.modal-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}.modal-head strong{flex:1;overflow:hidden;text-overflow:ellipsis}.modal-body{height:calc(100% - 58px);padding:15px}.editor{width:100%;height:100%;resize:none;background:#090f1d;color:#eaf0ff;border:1px solid var(--line);border-radius:8px;padding:14px;font:14px/1.55 ui-monospace,monospace;tab-size:2}.preview{width:100%;height:100%;border:0;object-fit:contain;background:#080d19;border-radius:8px}.toast{position:fixed;right:22px;bottom:22px;background:#1d2945;border:1px solid var(--line);padding:12px 16px;border-radius:9px;box-shadow:0 12px 35px #0008;display:none}.toast.bad{border-color:var(--danger)}
-    @media(max-width:680px){.top{align-items:flex-start;flex-direction:column}.stats{grid-template-columns:1fr}.search{width:120px}.modified,.size{display:none}.shell{padding:20px 12px}}
-  </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>gdcheerios storage</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Rubik:wght@400;500;600&display=swap');
+
+        :root {
+            color-scheme: dark;
+            --bg: #0c0c10;
+            --panel: #16161d;
+            --line: #2b2b36;
+            --text: #f4f4f8;
+            --muted: #8b8b9c;
+            --accent: #ffc800;
+            --danger: #ff4a4a;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: radial-gradient(circle at top, #1a1a24 0%, var(--bg) 60%);
+            color: var(--text);
+            font: 14px 'Rubik', 'Quicksand', system-ui, sans-serif;
+            min-height: 100vh;
+        }
+
+        button, input, textarea { font: inherit; }
+        button { cursor: pointer; transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .shell { max-width: 1180px; margin: auto; padding: 32px 22px; }
+        .top { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 24px; }
+
+        h1 { font-family: 'Quicksand', sans-serif; font-size: 26px; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
+        .sub, .muted { color: var(--muted); }
+
+        .actions { display: flex; gap: 9px; flex-wrap: wrap; }
+        .btn {
+            border: 2px solid var(--line);
+            background: #1c1c25;
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .btn:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255, 200, 0, 0.1); }
+        .btn:active { transform: translateY(0); }
+
+        .primary { background: var(--accent); border-color: var(--accent); color: #4d3c00; font-weight: 700; }
+        .primary:hover { box-shadow: 0 4px 15px rgba(255, 200, 0, 0.25); }
+        .danger { color: #ff8585; border-color: #3a1c22; }
+
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+        .stat, .browser {
+            background: var(--panel);
+            border: 2px solid var(--line);
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .stat { padding: 18px; }
+        .stat strong { display: block; font-family: 'Quicksand', sans-serif; font-size: 26px; margin-top: 6px; color: var(--accent); }
+
+        .browser { overflow: hidden; }
+        .toolbar { padding: 14px; border-bottom: 2px solid var(--line); display: flex; gap: 10px; align-items: center; background: #1a1a22; }
+        .crumbs { flex: 1; white-space: nowrap; overflow: auto; font-weight: 500; }
+        .crumb { color: var(--accent); background: none; border: 0; padding: 4px; font-weight: 600; }
+        .crumb:hover { color: #ffe166; }
+
+        .search {
+            width: 210px;
+            background: #0c0c10;
+            border: 2px solid var(--line);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 10px;
+            transition: border-color 0.2s;
+        }
+        .search:focus { outline: none; border-color: var(--accent); }
+
+        .drop { display: none; margin: 12px; border: 3px dashed var(--line); border-radius: 14px; text-align: center; padding: 32px; color: var(--muted); font-weight: 500; transition: all 0.2s; }
+        .drop.show { display: block; border-color: var(--accent); color: var(--accent); background: rgba(255, 200, 0, 0.05); }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+        th { color: var(--muted); font-size: 12px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+
+        .name { font-weight: 600; font-family: 'Quicksand', sans-serif; font-size: 15px; }
+        .entry { cursor: pointer; transition: background 0.15s; }
+        .entry:hover { background: #1c1c24; }
+        .entry-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+        .icon-btn { border: 0; background: transparent; color: var(--muted); padding: 6px; border-radius: 8px; }
+        .icon-btn:hover { color: var(--accent); background: #252530; transform: scale(1.05); }
+
+        .empty { text-align: center; padding: 60px; color: var(--muted); font-family: 'Quicksand', sans-serif; font-size: 16px; }
+
+        dialog { width: min(1000px, 94vw); height: min(720px, 90vh); padding: 0; border: 2px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--text); box-shadow: 0 24px 48px rgba(0,0,0,0.4); }
+        dialog::backdrop { background: rgba(6, 6, 8, 0.85); backdrop-filter: blur(4px); }
+
+        .modal-head { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 2px solid var(--line); background: #1a1a22; }
+        .modal-head strong { flex: 1; overflow: hidden; text-overflow: ellipsis; font-family: 'Quicksand', sans-serif; font-size: 18px; }
+        .modal-body { height: calc(100% - 63px); padding: 20px; }
+
+        .editor { width: 100%; height: 100%; resize: none; background: #0c0c10; color: #eaf0ff; border: 2px solid var(--line); border-radius: 12px; padding: 16px; font: 14px/1.6 ui-monospace, monospace; tab-size: 2; transition: border-color 0.2s; }
+        .editor:focus { outline: none; border-color: var(--accent); }
+
+        .preview { width: 100%; height: 100%; border: 0; object-fit: contain; background: #060608; border-radius: 12px; }
+
+        .toast { position: fixed; right: 24px; bottom: 24px; background: var(--panel); border: 2px solid var(--line); padding: 14px 20px; border-radius: 12px; box-shadow: 0 12px 35px rgba(0,0,0,0.3); display: none; font-weight: 500; }
+        .toast.bad { border-color: var(--danger); color: #ff8585; }
+
+        /* Split View Styles for Metadata editing */
+        .split-view { display: flex; height: 100%; gap: 20px; }
+        .props-panel { width: 280px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 8px; flex-shrink: 0; }
+        .props-panel label { font-size: 13px; color: var(--text); font-family: 'Quicksand', sans-serif; font-weight: 600; display: flex; flex-direction: column; gap: 8px; }
+        .props-panel input { font-size: 14px; width: 100%; background: #0c0c10; border: 2px solid var(--line); color: var(--text); padding: 10px 12px; border-radius: 10px; transition: border-color 0.2s; }
+        .props-panel input:focus { border-color: var(--accent); outline: none; }
+        .check-label { flex-direction: row !important; align-items: center; cursor: pointer; }
+        .check-label input { width: auto; accent-color: var(--accent); }
+        .change-fields { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-width: 0; }
+        .change-field { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 600; }
+        .change-field textarea { flex: 1; min-height: 220px; resize: vertical; background: #0c0c10; color: var(--text); border: 2px solid var(--line); border-radius: 10px; padding: 12px; font: 14px/1.5 inherit; }
+        .field-hint { color: var(--muted); font-size: 12px; font-weight: 400; }
+        .reference-section { display: flex; flex-direction: column; gap: 8px; }
+        .reference-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; }
+        .reference-list { display: flex; flex-direction: column; gap: 8px; }
+        .reference-row { display: grid; grid-template-columns: 1fr 76px 34px; gap: 6px; padding: 8px; border: 2px solid var(--line); border-radius: 10px; }
+        .reference-row select, .reference-row input { min-width: 0; width: 100%; background: #0c0c10; border: 1px solid var(--line); color: var(--text); padding: 7px; border-radius: 7px; }
+        .reference-row .reference-wide { grid-column: 1 / -1; }
+        .ref-change { grid-column: 1 / -1; }
+        .reference-remove { padding: 6px; }
+        .reference-empty { color: var(--muted); font-size: 12px; padding: 4px 0; }
+        .editor-stack { flex: 1; min-width: 0; display: grid; grid-template-rows: minmax(220px, 1fr) minmax(180px, .8fr); gap: 12px; }
+        .changelog-preview { overflow: auto; background: #0c0c10; border: 2px solid var(--line); border-radius: 12px; padding: 18px; line-height: 1.6; }
+        .changelog-preview h1, .changelog-preview h2, .changelog-preview h3 { font-family: 'Quicksand', sans-serif; margin: 0 0 10px; }
+        .changelog-preview h2 { margin-top: 20px; font-size: 19px; color: var(--accent); }
+        .changelog-preview p { margin: 7px 0; }
+        .changelog-preview ul { margin: 6px 0 12px; padding-left: 24px; }
+        .changelog-preview a { color: var(--accent); }
+        .preview-empty { color: var(--muted); }
+        .creation-stack { flex: 1; min-width: 0; display: grid; grid-template-rows: minmax(230px, 1fr) minmax(180px, .8fr); gap: 12px; overflow: hidden; }
+        .structured-stack { flex: 1; min-width: 0; display: grid; grid-template-rows: minmax(300px, 1fr) minmax(180px, .7fr); gap: 12px; overflow: hidden; }
+        .categories-editor, #categories-list { display: flex; flex-direction: column; gap: 12px; }
+        .categories-editor { overflow: auto; padding-right: 4px; }
+        .categories-head, .category-head, .subcategory-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .category-card { border: 2px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: rgba(12,12,16,.55); }
+        .category-name, .subcategory-name { flex: 1; min-width: 0; background: #0c0c10; border: 1px solid var(--line); color: var(--text); padding: 8px; border-radius: 8px; font-weight: 600; }
+        .category-changes, .subcategory-changes { width: 100%; min-height: 90px; resize: vertical; background: #0c0c10; border: 1px solid var(--line); color: var(--text); padding: 10px; border-radius: 8px; line-height: 1.5; }
+        .subcategories { display: flex; flex-direction: column; gap: 8px; padding-left: 16px; }
+        .subcategory-card { border-left: 3px solid var(--accent); padding: 8px 0 8px 10px; display: flex; flex-direction: column; gap: 7px; }
+
+        @media(max-width: 680px) {
+            .top { align-items: flex-start; flex-direction: column; }
+            .stats { grid-template-columns: 1fr; }
+            .search { width: 100%; }
+            .modified, .size { display: none; }
+            .shell { padding: 20px 16px; }
+            .split-view { flex-direction: column; }
+            .props-panel { width: 100%; height: auto; flex-shrink: unset; }
+            .change-fields { grid-template-columns: 1fr; overflow-y: auto; }
+            .editor-stack, .creation-stack { min-height: 500px; }
+        }
+    </style>
 </head>
 <body>
 <main class="shell">
-  <header class="top"><div><h1>gdcheerios storage</h1><div class="sub">Upload, preview, edit, and download your files.</div></div>
-    <div class="actions"><button class="btn" onclick="createChangelog()">New changelog</button><button class="btn" onclick="createEntry('file')">New file</button><button class="btn" onclick="createEntry('folder')">New folder</button><button class="btn primary" onclick="picker.click()">Upload</button><input id="picker" type="file" multiple hidden></div>
-  </header>
-  <section class="stats"><div class="stat"><span class="muted">Files</span><strong id="files">—</strong></div><div class="stat"><span class="muted">Folders</span><strong id="folders">—</strong></div><div class="stat"><span class="muted">Storage used</span><strong id="used">—</strong></div></section>
-  <section class="browser" id="browser">
-    <div class="toolbar"><div class="crumbs" id="crumbs"></div><input class="search" id="search" placeholder="Filter files…"></div>
-    <div class="drop" id="drop">Drop files here to upload</div>
-    <div id="listing"></div>
-  </section>
+    <header class="top"><div><h1>gdcheerios storage</h1><div class="sub">Upload, preview, edit, and download your files.</div></div>
+        <div class="actions"><button class="btn" onclick="createChangelog()">New changelog</button><button class="btn" onclick="createEntry('file')">New file</button><button class="btn" onclick="createEntry('folder')">New folder</button><button class="btn primary" onclick="picker.click()">Upload</button><input id="picker" type="file" multiple hidden></div>
+    </header>
+    <section class="stats"><div class="stat"><span class="muted">Files</span><strong id="files">—</strong></div><div class="stat"><span class="muted">Folders</span><strong id="folders">—</strong></div><div class="stat"><span class="muted">Storage used</span><strong id="used">—</strong></div></section>
+    <section class="browser" id="browser">
+        <div class="toolbar"><div class="crumbs" id="crumbs"></div><input class="search" id="search" placeholder="Filter files…"></div>
+        <div class="drop" id="drop">Drop files here to upload</div>
+        <div id="listing"></div>
+    </section>
 </main>
 <dialog id="viewer"><div class="modal-head"><strong id="viewerName"></strong><button class="btn" id="saveBtn" onclick="saveFile()">Save</button><button class="btn" onclick="viewer.close()">Close</button></div><div class="modal-body" id="viewerBody"></div></dialog>
 <div class="toast" id="toast"></div>
 <script>
-  let current="", entries=[], editing="";
-  const $=id=>document.getElementById(id), picker=$("picker"), viewer=$("viewer");
-  const enc=encodeURIComponent;
-  function bytes(n){if(!n)return"0 B";const u=["B","KB","MB","GB","TB"],i=Math.min(Math.floor(Math.log(n)/Math.log(1024)),4);return (n/1024**i).toFixed(i?1:0)+" "+u[i]}
-  function message(text,bad=false){const t=$("toast");t.textContent=text;t.className="toast"+(bad?" bad":"");t.style.display="block";setTimeout(()=>t.style.display="none",2800)}
-  async function api(url,options={}){const r=await fetch("."+url,options);if(!r.ok){let e;try{e=(await r.json()).error}catch{e=r.statusText}throw Error(e||"Request failed")}return r.status===204?null:r.json()}
-  async function load(path=current){try{const data=await api("/api/files?path="+enc(path));current=data.path;entries=data.entries;$("files").textContent=data.totals.files;$("folders").textContent=data.totals.directories;$("used").textContent=bytes(data.totals.bytes);renderCrumbs();render()}catch(e){message(e.message,true)}}
-  function renderCrumbs(){const parts=current?current.split("/"):[];let html='<button class="crumb" onclick="load(\'\')">Storage</button>',built="";parts.forEach(p=>{built+=(built?"/":"")+p;html+=' / <button class="crumb" onclick="load(\''+escapeJs(built)+'\')">'+escapeHtml(p)+"</button>"});$("crumbs").innerHTML=html}
-  function escapeHtml(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}function escapeJs(s){return s.replaceAll("\\","\\\\").replaceAll("'","\\'")}
-  function render(){const q=$("search").value.toLowerCase(),rows=entries.filter(e=>e.name.toLowerCase().includes(q));if(!rows.length){$("listing").innerHTML='<div class="empty">This folder is empty.</div>';return}
-    $("listing").innerHTML='<table><thead><tr><th>Name</th><th class="size">Size</th><th class="modified">Modified</th><th></th></tr></thead><tbody>'+rows.map(e=>'<tr class="entry"><td onclick="openEntry(\''+escapeJs(e.path)+'\','+e.is_dir+',\''+escapeJs(e.mime)+'\')"><span class="name">'+(e.is_dir?"📁 ":"📄 ")+escapeHtml(e.name)+'</span></td><td class="size">'+(e.is_dir?"—":bytes(e.size))+'</td><td class="modified">'+new Date(e.modified).toLocaleString()+'</td><td><div class="entry-actions">'+(!e.is_dir?'<a class="icon-btn" title="Download" href="/api/download?path='+enc(e.path)+'">↓</a>':'')+'<button class="icon-btn" title="Rename" onclick="renameEntry(\''+escapeJs(e.path)+'\',\''+escapeJs(e.name)+'\')">✎</button><button class="icon-btn danger" title="Delete" onclick="removeEntry(\''+escapeJs(e.path)+'\')">×</button></div></td></tr>').join("")+"</tbody></table>"}
-  async function openEntry(path,isDir,mime){if(isDir)return load(path);editing=path;$("viewerName").textContent=path.split("/").pop();const body=$("viewerBody"),save=$("saveBtn");save.style.display="none";body.innerHTML="";
-    if(mime.startsWith("image/"))body.innerHTML='<img class="preview" src="./api/raw?path='+enc(path)+'">';
-    else if(mime.startsWith("video/"))body.innerHTML='<video class="preview" controls src="./api/raw?path='+enc(path)+'"></video>';
-    else if(mime.startsWith("audio/"))body.innerHTML='<audio class="preview" controls src="./api/raw?path='+enc(path)+'"></audio>';
-    else if(mime==="application/pdf")body.innerHTML='<iframe class="preview" src="./api/raw?path='+enc(path)+'"></iframe>';
-    else try{const data=await api("/api/file?path="+enc(path));body.innerHTML='<textarea id="editor" class="editor" spellcheck="false"></textarea>';$("editor").value=data.content;save.style.display=""}catch(e){body.innerHTML='<div class="empty">'+escapeHtml(e.message)+'<br><br><a class="btn" href="/api/download?path='+enc(path)+'">Download file</a></div>'}
-    viewer.showModal()}
-  async function saveFile(){try{await api("/api/file",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:editing,content:$("editor").value})});message("Saved");viewer.close();load()}catch(e){message(e.message,true)}}
-  async function createEntry(type){const name=prompt("Name for the new "+type+":");if(!name)return;try{await api(type==="folder"?"/api/folders":"/api/files",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:current,name})});load()}catch(e){message(e.message,true)}}
-  async function createChangelog(){const project=prompt("Project name:");if(!project)return;const version=prompt("Version (without the v prefix):");if(!version)return;const github_repository=prompt("GitHub repository (owner/repository), or leave blank:")||"";try{const data=await api("/api/changelogs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({project,version,github_repository})});await load("changelogs/"+data.entry.project_slug);await openEntry(data.entry.path,false,"text/markdown")}catch(e){message(e.message,true)}}
-  async function renameEntry(path,old){const name=prompt("Rename to:",old);if(!name||name===old)return;try{await api("/api/entry",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({path,name})});load()}catch(e){message(e.message,true)}}
-  async function removeEntry(path){if(!confirm("Delete "+path+"? Folders and everything inside them will be removed."))return;try{await api("/api/entry?path="+enc(path),{method:"DELETE"});load()}catch(e){message(e.message,true)}}
-  async function upload(files){if(!files.length)return;const form=new FormData();form.append("path",current);[...files].forEach(f=>form.append("files",f));try{await api("/api/upload",{method:"POST",body:form});message(files.length+" file(s) uploaded");load()}catch(e){message(e.message,true)}}
-  picker.onchange=()=>{upload(picker.files);picker.value=""};$("search").oninput=render;
-  const browser=$("browser"),drop=$("drop");["dragenter","dragover"].forEach(n=>browser.addEventListener(n,e=>{e.preventDefault();drop.classList.add("show")}));["dragleave","drop"].forEach(n=>browser.addEventListener(n,e=>{e.preventDefault();drop.classList.remove("show")}));browser.addEventListener("drop",e=>upload(e.dataTransfer.files));
-  browser.addEventListener("click",e=>{const link=e.target.closest('a[href^="/api/"]');if(link){e.preventDefault();location.href="."+link.getAttribute("href")}});
-  viewer.addEventListener("click",e=>{const link=e.target.closest('a[href^="/api/"]');if(link){e.preventDefault();location.href="."+link.getAttribute("href")}});
-  load();
+    let current="", entries=[], editing="";
+    const $=id=>document.getElementById(id), picker=$("picker"), viewer=$("viewer");
+    const enc=encodeURIComponent;
+
+    // Track metadata globally for the active editor
+    window._currentMeta = null;
+
+    function bytes(n){if(!n)return"0 B";const u=["B","KB","MB","GB","TB"],i=Math.min(Math.floor(Math.log(n)/Math.log(1024)),4);return (n/1024**i).toFixed(i?1:0)+" "+u[i]}
+    function message(text,bad=false){const t=$("toast");t.textContent=text;t.className="toast"+(bad?" bad":"");t.style.display="block";setTimeout(()=>t.style.display="none",2800)}
+    async function api(url,options={}){const r=await fetch("."+url,options);if(!r.ok){let data={};try{data=await r.json()}catch{}const error=Error(data.error||r.statusText||"Request failed");error.status=r.status;error.data=data;throw error}return r.status===204?null:r.json()}
+    async function load(path=current){try{const data=await api("/api/files?path="+enc(path));current=data.path;entries=data.entries;$("files").textContent=data.totals.files;$("folders").textContent=data.totals.directories;$("used").textContent=bytes(data.totals.bytes);renderCrumbs();render()}catch(e){message(e.message,true)}}
+    function renderCrumbs(){const parts=current?current.split("/"):[];let html='<button class="crumb" onclick="load(\'\')">Storage</button>',built="";parts.forEach(p=>{built+=(built?"/":"")+p;html+=' / <button class="crumb" onclick="load(\''+escapeJs(built)+'\')">'+escapeHtml(p)+"</button>"});$("crumbs").innerHTML=html}
+    function escapeHtml(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}function escapeAttr(s){return escapeHtml(String(s)).replaceAll('"','&quot;').replaceAll("'",'&#39;')}function escapeJs(s){return s.replaceAll("\\","\\\\").replaceAll("'","\\'")}
+
+    function render(){const q=$("search").value.toLowerCase(),rows=entries.filter(e=>e.name.toLowerCase().includes(q));if(!rows.length){$("listing").innerHTML='<div class="empty">This folder is empty.</div>';return}
+      $("listing").innerHTML='<table><thead><tr><th>Name</th><th class="size">Size</th><th class="modified">Modified</th><th></th></tr></thead><tbody>'+rows.map(e=>'<tr class="entry"><td onclick="openEntry(\''+escapeJs(e.path)+'\','+e.is_dir+',\''+escapeJs(e.mime)+'\')"><span class="name">'+(e.is_dir?"📁 ":"📄 ")+escapeHtml(e.name)+'</span></td><td class="size">'+(e.is_dir?"—":bytes(e.size))+'</td><td class="modified">'+new Date(e.modified).toLocaleString()+'</td><td><div class="entry-actions">'+(!e.is_dir?'<a class="icon-btn" title="Download" href="/api/download?path='+enc(e.path)+'">↓</a>':'')+'<button class="icon-btn" title="Rename" onclick="renameEntry(\''+escapeJs(e.path)+'\',\''+escapeJs(e.name)+'\')">✎</button><button class="icon-btn danger" title="Delete" onclick="removeEntry(\''+escapeJs(e.path)+'\')">×</button></div></td></tr>').join("")+"</tbody></table>"}
+
+    function parseChangelogMD(text) {
+      if (!text.startsWith("---\n")) return { meta: null, body: text };
+      try {
+        const parts = text.substring(4).split('\n---\n');
+        const header = parts[0];
+        const body = parts.slice(1).join('\n---\n').replace(/^\n/,'');
+        const meta = {};
+        let activeList = null;
+        header.split('\n').forEach(line => {
+          if (line.startsWith("  - ") && activeList) {
+             let val = line.substring(4).trim();
+             try { val = JSON.parse(val); } catch(e){}
+             meta[activeList].push(val);
+          } else if (line.includes(':')) {
+             let idx = line.indexOf(':');
+             let key = line.substring(0, idx).trim();
+             let val = line.substring(idx + 1).trim();
+             if (!val) { meta[key] = []; activeList = key; }
+             else {
+               try { meta[key] = JSON.parse(val); } catch(e){ meta[key] = val.replace(/^"|"$/g, ''); }
+               activeList = null;
+             }
+          }
+        });
+        return { meta, body };
+      } catch(e) { return { meta: null, body: text }; }
+    }
+
+    function serializeChangelogMD(meta, body) {
+      let out = "---\n";
+      for (const [key, val] of Object.entries(meta)) {
+        if (Array.isArray(val)) {
+          out += `${key}:\n` + val.map(v => `  - ${JSON.stringify(v)}`).join('\n') + '\n';
+        } else {
+          out += `${key}: ${JSON.stringify(val)}\n`;
+        }
+      }
+      out += "---\n\n" + body;
+      return out;
+    }
+
+    function referenceEditor() {
+      return `<div class="reference-section">
+        <div class="reference-head"><span>GitHub references</span><button type="button" class="btn" onclick="addReference()">+ Add</button></div>
+        <div class="field-hint">Choose the exact change this PR or issue belongs to.</div>
+        <div id="reference-list" class="reference-list"></div>
+      </div>`;
+    }
+
+    function referenceRow(reference={}) {
+      const type = reference.type === "issue" ? "issue" : "pull_request";
+      const target = reference.category && reference.change ? encodeReferenceTarget(reference.category, reference.subcategory || "", reference.change) : "";
+      return `<div class="reference-row">
+        <select class="ref-type" aria-label="Reference type"><option value="pull_request" ${type === "pull_request" ? "selected" : ""}>Pull request</option><option value="issue" ${type === "issue" ? "selected" : ""}>Issue</option></select>
+        <input class="ref-number" type="number" min="1" placeholder="#" aria-label="Reference number" value="${escapeAttr(reference.number || '')}">
+        <button type="button" class="btn danger reference-remove" title="Remove reference" onclick="this.closest('.reference-row').remove(); updateReferenceEmptyState(); updateChangelogPreview()">×</button>
+        <select class="ref-change" aria-label="Linked change" data-selected="${escapeAttr(target)}"></select>
+        <input class="ref-existing-url" type="hidden" value="${escapeAttr(reference.url || '')}">
+      </div>`;
+    }
+
+    function renderReferences(references=[]) {
+      const list = $("reference-list");
+      list.innerHTML = references.map(referenceRow).join("");
+      refreshReferenceTargets();
+      updateReferenceEmptyState();
+    }
+
+    function addReference(reference={}) {
+      const list = $("reference-list");
+      list.querySelector(".reference-empty")?.remove();
+      list.insertAdjacentHTML("beforeend", referenceRow(reference));
+      refreshReferenceTargets();
+      list.lastElementChild.querySelector(".ref-number").focus();
+      updateChangelogPreview();
+    }
+
+    function updateReferenceEmptyState() {
+      const list = $("reference-list");
+      if (list && !list.querySelector(".reference-row")) list.innerHTML = '<div class="reference-empty">No linked PRs or issues.</div>';
+    }
+
+    function collectReferences() {
+      const repository = $("prop-repo")?.value.trim().replace(/^\/+|\/+$/g, "");
+      return [...document.querySelectorAll("#reference-list .reference-row")].filter(row => row.querySelector(".ref-number").value).map(row => {
+        const type = row.querySelector(".ref-type").value;
+        const number = Number(row.querySelector(".ref-number").value);
+        const resource = type === "issue" ? "issues" : "pull";
+        const [category, subcategory, change] = decodeReferenceTarget(row.querySelector(".ref-change").value);
+        return {
+          type, number,
+          title: "",
+          url: repository ? `https://github.com/${repository}/${resource}/${number}` : row.querySelector(".ref-existing-url").value,
+          category, subcategory, change
+        };
+      });
+    }
+
+    function availableChanges() {
+      const changes = [];
+      document.querySelectorAll("#categories-list > .category-card").forEach(card => {
+        const category = card.querySelector(":scope > .category-head .category-name").value.trim();
+        card.querySelector(":scope > .category-changes").value.split("\n").map(value => value.trim()).filter(Boolean).forEach(change => changes.push({category, subcategory: "", change}));
+        card.querySelectorAll(":scope > .subcategories > .subcategory-card").forEach(subcard => {
+          const subcategory = subcard.querySelector(".subcategory-name").value.trim();
+          subcard.querySelector(".subcategory-changes").value.split("\n").map(value => value.trim()).filter(Boolean).forEach(change => changes.push({category, subcategory, change}));
+        });
+      });
+      return changes;
+    }
+
+    function encodeReferenceTarget(category, subcategory, change) {
+      return encodeURIComponent(JSON.stringify([category, subcategory, change]));
+    }
+
+    function decodeReferenceTarget(value) {
+      if (!value) return ["", "", ""];
+      try { return JSON.parse(decodeURIComponent(value)); }
+      catch { return ["", "", ""]; }
+    }
+
+    function refreshReferenceTargets() {
+      const changes = availableChanges();
+      document.querySelectorAll("#reference-list .ref-change").forEach(select => {
+        const selected = select.value || select.dataset.selected || "";
+        select.innerHTML = '<option value="">Unlinked / general</option>' + changes.map(({category, subcategory, change}) => {
+          const value = encodeReferenceTarget(category, subcategory, change);
+          const path = subcategory ? `${category} / ${subcategory}` : category;
+          return `<option value="${escapeAttr(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(path)} — ${escapeHtml(change)}</option>`;
+        }).join("");
+        select.dataset.selected = "";
+      });
+    }
+
+    function referenceMarkdownLine(reference) {
+        const label = reference.type === "issue" ? "Issue" : "PR";
+        return `* [${label} #${reference.number}](${reference.url})`;
+    }
+
+    function syncReferenceLinks(body, references) {
+      const source = body.replace(/\n?## Related changes\n[\s\S]*$/, "").split("\n");
+      const cleaned = [];
+      for (let index = 0; index < source.length; index++) {
+        cleaned.push(source[index].replace(/ — \[(?:PR|Issue) #\d+\]\(https?:\/\/[^)]+\)(?:, \[(?:PR|Issue) #\d+\]\(https?:\/\/[^)]+\))*/g, ""));
+      }
+      let category = "", subcategory = "";
+      for (let index = 0; index < cleaned.length; index++) {
+        const line = cleaned[index];
+        if (line.startsWith("## ")) { category = line.slice(3).trim(); subcategory = ""; }
+        else if (line.startsWith("### ")) subcategory = line.slice(4).trim();
+        else if (category && /^[*-] /.test(line)) {
+          const change = line.slice(2).trim();
+          const linked = references.filter(reference => reference.category === category && (reference.subcategory || "") === subcategory && reference.change === change);
+          if (linked.length) {
+            const links = linked.map(reference => {
+              const label = reference.type === "issue" ? "Issue" : "PR";
+              return `[${label} #${reference.number}](${reference.url})`;
+            });
+            cleaned[index] += ` — ${links.join(", ")}`;
+          }
+        }
+      }
+      let result = cleaned.join("\n").trimEnd();
+      const unlinked = references.filter(reference => !reference.change);
+      if (unlinked.length) result += `\n\n## Related changes\n${unlinked.map(referenceMarkdownLine).join("\n")}`;
+      return result + "\n";
+    }
+
+    function renderInlineMarkdown(text) {
+      let output = "", cursor = 0;
+      const linkPattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+      for (const match of text.matchAll(linkPattern)) {
+        output += escapeHtml(text.slice(cursor, match.index));
+        output += `<a href="${escapeAttr(match[2])}" target="_blank" rel="noopener">${escapeHtml(match[1])}</a>`;
+        cursor = match.index + match[0].length;
+      }
+      return output + escapeHtml(text.slice(cursor));
+    }
+
+    function renderMarkdown(markdown) {
+      const lines = markdown.trim().split("\n"), html = [];
+      let inList = false;
+      const closeList = () => { if (inList) { html.push("</ul>"); inList = false; } };
+      for (const line of lines) {
+        if (line.startsWith("### ")) { closeList(); html.push(`<h3>${renderInlineMarkdown(line.slice(4))}</h3>`); }
+        else if (line.startsWith("## ")) { closeList(); html.push(`<h2>${renderInlineMarkdown(line.slice(3))}</h2>`); }
+        else if (line.startsWith("# ")) { closeList(); html.push(`<h1>${renderInlineMarkdown(line.slice(2))}</h1>`); }
+        else if (/^[*-] /.test(line)) { if (!inList) { html.push("<ul>"); inList = true; } html.push(`<li>${renderInlineMarkdown(line.slice(2))}</li>`); }
+        else if (line.trim()) { closeList(); html.push(`<p>${renderInlineMarkdown(line)}</p>`); }
+        else closeList();
+      }
+      closeList();
+      return html.join("");
+    }
+
+    function parseCategoryModel(body) {
+      const categories = [];
+      let category = null, subcategory = null;
+      const lines = body.replace(/\n?## Related changes\n[\s\S]*$/, "").split("\n");
+      for (const rawLine of lines) {
+        if (rawLine.startsWith("## ")) {
+          category = {name: rawLine.slice(3).trim(), changes: [], subcategories: []};
+          categories.push(category); subcategory = null;
+        } else if (category && rawLine.startsWith("### ")) {
+          if (rawLine === "### References") { subcategory = {ignore: true}; continue; }
+          subcategory = {name: rawLine.slice(4).trim(), changes: []};
+          category.subcategories.push(subcategory);
+        } else if (category && /^[*-] /.test(rawLine)) {
+          const change = rawLine.slice(2).replace(/ — \[(?:PR|Issue) #\d+\]\(https?:\/\/[^)]+\)(?:, \[(?:PR|Issue) #\d+\]\(https?:\/\/[^)]+\))*/g, "").trim();
+          if (change && change !== "Describe the change." && !subcategory?.ignore) (subcategory ? subcategory.changes : category.changes).push(change);
+        }
+      }
+      return categories.length ? categories : defaultCategoryModel();
+    }
+
+    function defaultCategoryModel() {
+      return ["Added", "Fixed", "Infrastructure"].map(name => ({name, changes: [], subcategories: []}));
+    }
+
+    function categoryCardHtml(category={name:"",changes:[],subcategories:[]}) {
+      return `<div class="category-card">
+        <div class="category-head"><input class="category-name" placeholder="Category name" value="${escapeAttr(category.name || '')}"><button type="button" class="btn danger" onclick="this.closest('.category-card').remove(); structuredEditorChanged()">Remove</button></div>
+        <textarea class="category-changes" placeholder="Category changes — one per line">${escapeHtml((category.changes || []).join("\n"))}</textarea>
+        <div class="subcategories">${(category.subcategories || []).map(subcategoryCardHtml).join("")}</div>
+        <button type="button" class="btn" onclick="addSubcategory(this)">+ Subcategory</button>
+      </div>`;
+    }
+
+    function subcategoryCardHtml(subcategory={name:"",changes:[]}) {
+      return `<div class="subcategory-card">
+        <div class="subcategory-head"><input class="subcategory-name" placeholder="Subcategory name" value="${escapeAttr(subcategory.name || '')}"><button type="button" class="btn danger" onclick="this.closest('.subcategory-card').remove(); structuredEditorChanged()">Remove</button></div>
+        <textarea class="subcategory-changes" placeholder="Subcategory changes — one per line">${escapeHtml((subcategory.changes || []).join("\n"))}</textarea>
+      </div>`;
+    }
+
+    function renderCategoryModel(categories) {
+      $("categories-list").innerHTML = categories.map(categoryCardHtml).join("");
+    }
+
+    function addCategory() {
+      $("categories-list").insertAdjacentHTML("beforeend", categoryCardHtml());
+      $("categories-list").lastElementChild.querySelector(".category-name").focus();
+      structuredEditorChanged();
+    }
+
+    function addSubcategory(button) {
+      const list = button.closest(".category-card").querySelector(":scope > .subcategories");
+      list.insertAdjacentHTML("beforeend", subcategoryCardHtml());
+      list.lastElementChild.querySelector(".subcategory-name").focus();
+      structuredEditorChanged();
+    }
+
+    function collectCategoryModel() {
+      return [...document.querySelectorAll("#categories-list > .category-card")].map(card => ({
+        name: card.querySelector(":scope > .category-head .category-name").value.trim(),
+        changes: card.querySelector(":scope > .category-changes").value.split("\n").map(value => value.trim()).filter(Boolean),
+        subcategories: [...card.querySelectorAll(":scope > .subcategories > .subcategory-card")].map(subcard => ({
+          name: subcard.querySelector(".subcategory-name").value.trim(),
+          changes: subcard.querySelector(".subcategory-changes").value.split("\n").map(value => value.trim()).filter(Boolean)
+        }))
+      })).filter(category => category.name);
+    }
+
+    function categoryPayload(categories=collectCategoryModel()) {
+      return Object.fromEntries(categories.map(category => [category.name, Object.fromEntries([
+        ["", category.changes],
+        ...category.subcategories.filter(subcategory => subcategory.name).map(subcategory => [subcategory.name, subcategory.changes])
+      ])]));
+    }
+
+    function validateCategoryModel() {
+      const categories = collectCategoryModel();
+      if (!categories.length) throw Error("Add at least one category");
+      if (new Set(categories.map(category => category.name)).size !== categories.length) throw Error("Category names must be unique");
+      for (const category of categories) {
+        const names = category.subcategories.filter(subcategory => subcategory.name).map(subcategory => subcategory.name);
+        if (new Set(names).size !== names.length) throw Error(`Subcategory names in ${category.name} must be unique`);
+      }
+      return categories;
+    }
+
+    function structuredMarkdown() {
+      const body = collectCategoryModel().map(category => {
+        const lines = [`## ${category.name}`];
+        (category.changes.length ? category.changes : (!category.subcategories.length ? ["Describe the change."] : [])).forEach(change => lines.push(`* ${change}`));
+        category.subcategories.forEach(subcategory => {
+          if (!subcategory.name) return;
+          lines.push("", `### ${subcategory.name}`);
+          (subcategory.changes.length ? subcategory.changes : ["Describe the change."]).forEach(change => lines.push(`* ${change}`));
+        });
+        return lines.join("\n");
+      }).join("\n\n");
+      return syncReferenceLinks(body, collectReferences());
+    }
+
+    function structuredEditorChanged() {
+      refreshReferenceTargets();
+      updateChangelogPreview();
+    }
+
+    function changelogEditorHtml(meta, datalists="") {
+      return `${datalists}<div class="split-view">
+        <div class="props-panel">
+          <label>Project <input ${datalists ? 'list="proj-list"' : ''} id="prop-project" placeholder="Project name" value="${escapeAttr(meta.project || '')}"></label>
+          <label>Version <input id="prop-version" placeholder="e.g. 1.0.0" value="${escapeAttr(meta.version || '')}"></label>
+          <label>Date <input type="date" id="prop-date" value="${escapeAttr(meta.date || '')}"></label>
+          <label class="check-label"><input type="checkbox" id="prop-live" ${meta.live ? "checked" : ""}> Live now</label>
+          <label>GitHub Repo <input ${datalists ? 'list="repo-list"' : ''} id="prop-repo" placeholder="owner/repo" value="${escapeAttr(meta.github_repository || '')}"></label>
+          ${referenceEditor()}
+        </div>
+        <div class="structured-stack">
+          <div class="categories-editor"><div class="categories-head"><strong>Categories</strong><button type="button" class="btn" onclick="addCategory()">+ Category</button></div><div id="categories-list"></div></div>
+          <div id="changelog-preview" class="changelog-preview"></div>
+        </div>
+      </div>`;
+    }
+
+    function updateChangelogPreview() {
+      const preview = $("changelog-preview");
+      if (!preview) return;
+      const markdown = structuredMarkdown();
+      preview.innerHTML = renderMarkdown(markdown) || '<div class="preview-empty">The preview will appear here.</div>';
+    }
+
+    async function openEntry(path,isDir,mime){
+      if(isDir)return load(path);
+      editing=path;
+      $("viewerName").textContent=path.split("/").pop();
+      const body=$("viewerBody"),save=$("saveBtn");
+
+      // Ensure the main button is configured for "Saving" edits
+      save.onclick = saveFile;
+      save.textContent = "Save";
+      save.style.display="none";
+      body.innerHTML="";
+      window._currentMeta = null;
+
+      if(mime.startsWith("image/"))body.innerHTML='<img class="preview" src="./api/raw?path='+enc(path)+'">';
+      else if(mime.startsWith("video/"))body.innerHTML='<video class="preview" controls src="./api/raw?path='+enc(path)+'"></video>';
+      else if(mime.startsWith("audio/"))body.innerHTML='<audio class="preview" controls src="./api/raw?path='+enc(path)+'"></audio>';
+      else if(mime==="application/pdf")body.innerHTML='<iframe class="preview" src="./api/raw?path='+enc(path)+'"></iframe>';
+      else try{
+        const data=await api("/api/file?path="+enc(path));
+        if (path.endsWith(".md")) {
+            const parsed = parseChangelogMD(data.content);
+            if (parsed.meta) {
+                window._currentMeta = parsed.meta;
+                body.innerHTML = changelogEditorHtml(parsed.meta);
+                renderCategoryModel(parseCategoryModel(parsed.body));
+                renderReferences(parsed.meta.references || []);
+                updateChangelogPreview();
+                save.style.display="";
+                viewer.showModal();
+                return;
+            }
+        }
+        body.innerHTML='<textarea id="editor" class="editor" spellcheck="false"></textarea>';
+        $("editor").value=data.content;
+        save.style.display=""
+      } catch(e) {
+        body.innerHTML='<div class="empty">'+escapeHtml(e.message)+'<br><br><a class="btn" href="/api/download?path='+enc(path)+'">Download file</a></div>'
+      }
+      viewer.showModal()
+    }
+
+    async function saveFile(){
+      let contentToSave;
+      if ($("prop-project") && window._currentMeta) {
+          let categories;
+          try { categories = validateCategoryModel(); }
+          catch (error) { return message(error.message, true); }
+          const references = collectReferences();
+          if (references.some(reference => !reference.url)) {
+              return message("Add a GitHub repository or URL for each reference", true);
+          }
+          const updatedMeta = {
+              version: $("prop-version").value,
+              date: $("prop-date").value,
+              project: $("prop-project").value,
+              live: $("prop-live").checked,
+              categories: categories.map(category => category.name),
+              github_repository: $("prop-repo").value,
+              references
+          };
+          contentToSave = serializeChangelogMD(updatedMeta, structuredMarkdown());
+      } else {
+          contentToSave = $("editor").value;
+      }
+
+      try{
+        await api("/api/file",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:editing,content:contentToSave})});
+        message("Saved");
+        viewer.close();
+        load();
+      }catch(e){message(e.message,true)}
+    }
+
+    // File & Folder Creation (uses native prompt)
+    async function createEntry(type){const name=prompt("Name for the new "+type+":");if(!name)return;try{await api(type==="folder"?"/api/folders":"/api/files",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:current,name})});load()}catch(e){message(e.message,true)}}
+
+    // Changelog Creation (NO PROMPTS - opens the split-view modal directly)
+    async function createChangelog() {
+      try {
+        let pList = "", rList = "";
+        const projectDefaults = {};
+        const projectVersions = {};
+        try {
+          const data = await api("/api/changelogs");
+          const projects = new Set();
+          const repos = new Set();
+          if (data && data.projects) {
+            data.projects.forEach(p => {
+              p.entries.forEach(e => {
+                if (e.project) projects.add(e.project);
+                if (e.github_repository) repos.add(e.github_repository);
+                if (e.project && !projectDefaults[e.project]) projectDefaults[e.project] = e;
+                if (e.project && e.version) (projectVersions[e.project] ||= new Set()).add(String(e.version));
+              });
+            });
+          }
+          pList = [...projects].map(p => `<option value="${escapeHtml(p)}">`).join('');
+          rList = [...repos].map(r => `<option value="${escapeHtml(r)}">`).join('');
+        } catch (err) {
+          console.warn("Could not load existing metadata for dropdowns", err);
+        }
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        const day = now.getDate();
+        const defaultVersion = `${year}.${month}${day}.0`;
+        const dailyVersionPrefix = `${year}.${month}${day}.`;
+
+        window._currentMeta = { date: now.toISOString().split('T')[0], version: defaultVersion };
+        $("viewerName").textContent = "New Changelog";
+
+        const body = $("viewerBody"), save = $("saveBtn");
+
+        const datalists = `<datalist id="proj-list">${pList}</datalist><datalist id="repo-list">${rList}</datalist>`;
+        body.innerHTML = changelogEditorHtml(window._currentMeta, datalists);
+        renderCategoryModel(defaultCategoryModel());
+        const applyProjectDefaults = event => {
+          const previous = projectDefaults[event.target.value];
+          if (previous && !$("prop-repo").value) $("prop-repo").value = previous.github_repository || "";
+          if (previous) {
+            const used = projectVersions[event.target.value] || new Set();
+            let revision = 0;
+            while (used.has(`${dailyVersionPrefix}${revision}`)) revision++;
+            $("prop-version").value = `${dailyVersionPrefix}${revision}`;
+          }
+        };
+        $("prop-project").addEventListener("input", applyProjectDefaults);
+        $("prop-project").addEventListener("change", applyProjectDefaults);
+        renderReferences();
+        updateChangelogPreview();
+
+        save.onclick = submitNewChangelog;
+        save.textContent = "Create";
+        save.style.display = "";
+        viewer.showModal();
+      } catch (e) {
+        message(e.message, true);
+      }
+    }
+
+    async function submitNewChangelog() {
+      const project = $("prop-project").value.trim();
+      const version = $("prop-version").value.trim();
+      if (!project || !version) return message("Project and Version are required", true);
+
+      try {
+        const categories = validateCategoryModel();
+        if (collectReferences().some(reference => !reference.url)) throw Error("Add a GitHub repository or URL for each reference");
+        const payload = {
+          project, version,
+          date: $("prop-date").value,
+          live: $("prop-live").checked,
+          github_repository: $("prop-repo").value,
+          categories: categories.map(category => category.name),
+          references: collectReferences(),
+          sections: categoryPayload(categories)
+        };
+
+        const res = await api("/api/changelogs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        message("Changelog created");
+        viewer.close();
+        await load("changelogs/" + res.entry.project_slug);
+      } catch (e) {
+        if (e.status === 409 && e.data?.suggested_version) {
+          $("prop-version").value = e.data.suggested_version;
+          return message(`Version already existed; changed to ${e.data.suggested_version}. Click Create again.`, true);
+        }
+        message(e.message, true);
+      }
+    }
+
+    async function renameEntry(path,old){const name=prompt("Rename to:",old);if(!name||name===old)return;try{await api("/api/entry",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({path,name})});load()}catch(e){message(e.message,true)}}
+    async function removeEntry(path){if(!confirm("Delete "+path+"? Folders and everything inside them will be removed."))return;try{await api("/api/entry?path="+enc(path),{method:"DELETE"});load()}catch(e){message(e.message,true)}}
+    async function upload(files){if(!files.length)return;const form=new FormData();form.append("path",current);[...files].forEach(f=>form.append("files",f));try{await api("/api/upload",{method:"POST",body:form});message(files.length+" file(s) uploaded");load()}catch(e){message(e.message,true)}}
+
+    picker.onchange=()=>{upload(picker.files);picker.value=""};$("search").oninput=render;
+
+    const browser=$("browser"),drop=$("drop");["dragenter","dragover"].forEach(n=>browser.addEventListener(n,e=>{e.preventDefault();drop.classList.add("show")}));["dragleave","drop"].forEach(n=>browser.addEventListener(n,e=>{e.preventDefault();drop.classList.remove("show")}));browser.addEventListener("drop",e=>upload(e.dataTransfer.files));
+    browser.addEventListener("click",e=>{const link=e.target.closest('a[href^="/api/"]');if(link){e.preventDefault();location.href="."+link.getAttribute("href")}});
+    viewer.addEventListener("click",e=>{const link=e.target.closest('a[href^="/api/"]');if(link){e.preventDefault();location.href="."+link.getAttribute("href")}});
+
+    viewer.addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        $("saveBtn").click();
+      }
+      if (e.target.id === "editor" && e.key === "Tab") {
+        e.preventDefault();
+        const start = e.target.selectionStart;
+        const end = e.target.selectionEnd;
+        e.target.value = e.target.value.substring(0, start) + "  " + e.target.value.substring(end);
+        e.target.selectionStart = e.target.selectionEnd = start + 2;
+      }
+    });
+    viewer.addEventListener("input", event => {
+      updateChangelogPreview();
+    });
+    viewer.addEventListener("change", event => {
+      if (event.target.matches(".category-name,.category-changes,.subcategory-name,.subcategory-changes")) refreshReferenceTargets();
+      updateChangelogPreview();
+    });
+
+    load();
 </script>
 </body>
 </html>

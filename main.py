@@ -14,10 +14,13 @@ from urllib.parse import urlparse
 
 import bleach
 import markdown
+from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, send_file
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Gauge, generate_latest
 from werkzeug.exceptions import BadRequest, HTTPException, RequestEntityTooLarge
 from werkzeug.utils import secure_filename
+
+load_dotenv()
 
 STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "./storage")).resolve()
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "256"))
@@ -40,6 +43,7 @@ def load_users() -> dict[str, dict]:
     """
     raw_users = os.getenv("STORAGE_USERS", "")
     if not raw_users:
+        print("STORAGE_USERS not found")
         return {}
     try:
         users = json.loads(raw_users)
@@ -189,11 +193,19 @@ def github_references(data: dict) -> list[dict]:
         parsed = urlparse(url)
         if parsed.scheme != "https" or parsed.netloc.lower() not in {"github.com", "www.github.com"}:
             raise BadRequest("Reference URLs must be HTTPS github.com links")
+        category = str(reference.get("category", "")).strip()
+        subcategory = str(reference.get("subcategory", "")).strip()
+        change = str(reference.get("change", "")).strip()
+        if bool(category) != bool(change):
+            raise BadRequest("A reference must provide both category and change")
         normalized.append({
             "type": reference_type,
             "number": number,
             "title": str(reference.get("title", "")).strip(),
             "url": url,
+            "category": category,
+            "subcategory": subcategory,
+            "change": change,
         })
     return normalized
 
@@ -208,6 +220,9 @@ def build_changelog(data: dict, template: bool = False) -> tuple[str, dict]:
         raise BadRequest("Date must use YYYY-MM-DD format") from error
     references = github_references(data)
     repository = str(data.get("github_repository", "")).strip().strip("/")
+    live = data.get("live", False)
+    if not isinstance(live, bool):
+        raise BadRequest("Live must be a boolean")
 
     default_sections = ["Added", "Fixed", "Infrastructure"]
     sections = data.get("sections") or {}
@@ -217,10 +232,37 @@ def build_changelog(data: dict, template: bool = False) -> tuple[str, dict]:
     if not isinstance(categories, list):
         raise BadRequest("Categories must be an array")
     categories = [str(category).strip() for category in categories if str(category).strip()]
+    normalized_sections = {}
+    for category in categories:
+        category_sections = sections.get(category) or []
+        if isinstance(category_sections, dict):
+            normalized_sections[category] = {}
+            for subcategory, values in category_sections.items():
+                subcategory = str(subcategory).strip()
+                if isinstance(values, str):
+                    values = [values]
+                if not isinstance(values, list):
+                    raise BadRequest("Each category and subcategory must contain an array of changes")
+                normalized_sections[category][subcategory] = [str(value).strip() for value in values if str(value).strip()]
+        else:
+            values = [category_sections] if isinstance(category_sections, str) else category_sections
+            if not isinstance(values, list):
+                raise BadRequest("Each category must contain an array or subcategory object")
+            normalized_sections[category] = {"": [str(value).strip() for value in values if str(value).strip()]}
+    for reference in references:
+        if not reference["change"]:
+            continue
+        if reference["category"] not in categories:
+            raise BadRequest(f"Unknown reference category: {reference['category']}")
+        if reference["subcategory"] not in normalized_sections[reference["category"]]:
+            raise BadRequest(f"Unknown reference subcategory: {reference['subcategory']}")
+        if reference["change"] not in normalized_sections[reference["category"]][reference["subcategory"]]:
+            raise BadRequest(f"Referenced change was not found: {reference['change']}")
     metadata = {
         "version": version,
         "date": release_date,
         "project": project_name,
+        "live": live,
         "categories": categories,
         "github_repository": repository,
         "references": references,
@@ -231,6 +273,7 @@ def build_changelog(data: dict, template: bool = False) -> tuple[str, dict]:
         f"version: {json.dumps(version)}\n"
         f"date: {json.dumps(release_date)}\n"
         f"project: {json.dumps(project_name, ensure_ascii=False)}\n"
+        f"live: {json.dumps(live)}\n"
         f"categories:\n{category_lines}\n"
         f"github_repository: {json.dumps(repository)}\n"
         f"references: {json.dumps(references, ensure_ascii=False)}\n"
@@ -239,10 +282,34 @@ def build_changelog(data: dict, template: bool = False) -> tuple[str, dict]:
 
     body = []
     for category in categories:
-        body.extend([f"## {category}", *bullet_lines(sections.get(category), "Describe the change."), ""])
-    if references:
+        body.append(f"## {category}")
+        category_sections = normalized_sections[category]
+        if not any(category_sections.values()):
+            category_sections = {"": ["Describe the change."]}
+        for subcategory, entries in category_sections.items():
+            if subcategory:
+                body.append(f"### {subcategory}")
+            for entry in entries:
+                line = f"* {entry}"
+                entry_references = [
+                    reference for reference in references
+                    if reference["category"] == category
+                    and reference["subcategory"] == subcategory
+                    and reference["change"] == entry
+                ]
+                if entry_references:
+                    links = []
+                    for reference in entry_references:
+                        label = "PR" if reference["type"] == "pull_request" else "Issue"
+                        links.append(f"[{label} #{reference['number']}]({reference['url']})")
+                    line += f" — {', '.join(links)}"
+                body.append(line)
+            if entries:
+                body.append("")
+    unlinked_references = [reference for reference in references if not reference["change"]]
+    if unlinked_references:
         body.extend(["## Related changes"])
-        for reference in references:
+        for reference in unlinked_references:
             label = "PR" if reference["type"] == "pull_request" else "Issue"
             title = f" — {reference['title']}" if reference["title"] else ""
             body.append(f"* [{label} #{reference['number']}]({reference['url']}){title}")
@@ -290,6 +357,17 @@ def changelog_file(project: str, version: str) -> Path:
     if CHANGELOG_ROOT not in candidate.parents:
         raise BadRequest("Invalid changelog path")
     return candidate
+
+
+def next_changelog_version(project: str, version: str) -> str:
+    """Return the next unused numeric revision for a conflicting version."""
+    version = changelog_version(version)
+    match = re.fullmatch(r"(.+\.)(\d+)", version)
+    prefix = match.group(1) if match else f"{version}."
+    revision = int(match.group(2)) + 1 if match else 1
+    while changelog_file(project, f"{prefix}{revision}").exists():
+        revision += 1
+    return f"{prefix}{revision}"
 
 
 def changelog_payload(path: Path) -> dict:
@@ -345,7 +423,7 @@ def list_changelogs():
         for path in sorted(project_dir.glob("v*.md"), key=lambda item: item.stat().st_mtime, reverse=True):
             try:
                 payload = changelog_payload(path)
-                entries.append({key: payload.get(key) for key in ("version", "date", "project", "categories", "github_repository", "references", "filename", "modified")})
+                entries.append({key: payload.get(key) for key in ("version", "date", "project", "live", "categories", "github_repository", "references", "filename", "modified")})
             except (OSError, UnicodeDecodeError):
                 continue
         projects.append({"slug": project_dir.name, "entries": entries})
@@ -359,6 +437,7 @@ def changelog_template():
         "project": request.args.get("project", "Project name"),
         "version": request.args.get("version", "0.1.0"),
         "date": request.args.get("date", date.today().isoformat()),
+        "live": request.args.get("live", "false").lower() == "true",
         "github_repository": request.args.get("github_repository", ""),
     }
     content, metadata = build_changelog(data, template=True)
@@ -375,7 +454,11 @@ def create_changelog():
     path = changelog_file(str(data.get("project", "")), str(data.get("version", "")))
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and not data.get("overwrite", False):
-        return jsonify(error="That project version already exists"), 409
+        suggested_version = next_changelog_version(str(data.get("project", "")), str(data.get("version", "")))
+        return jsonify(
+            error=f"That project version already exists. Try version {suggested_version}.",
+            suggested_version=suggested_version,
+        ), 409
     path.write_text(content, encoding="utf-8")
     return jsonify(entry={**metadata, "project_slug": path.parent.name, "filename": path.name, "path": relative(path), "markdown": content}), 201
 
